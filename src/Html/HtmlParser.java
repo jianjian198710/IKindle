@@ -9,25 +9,28 @@ import java.util.regex.Pattern;
  * G Page URL Exp: http://ikandou.com/g/popular/?page=2
  * G Book: <a href="/g/detail/11896372/">******
  * G PageNumber: <a href="?page=37" class="page">37</a>
- * DownloadURL Exp: http://ikandou.com/g/download/ebook/inner/716371611/epub/
+ * OldDownloadURL Exp: http://ikandou.com/g/download/ebook/inner/716371611/epub/
+ * PopularDownloadURL Exp: http://ikandou.com/oldbook/download/inner/3135985124
  */
 public class HtmlParser {
 	
 	int pageCounter;
-	static HashMap<String,String> books = new HashMap<String,String>();
+	public static final String DOMAIN ="http://ikandou.com"; 
+	static HashMap<String,String> oldbooks = new HashMap<String,String>();
+	static HashMap<String,String> popularbooks = new HashMap<String,String>();
 	
-	//½âÎöÒ³ÃæµÄCSRF
+	//è§£æé¡µé¢çš„CSRF
 	public static String parseCSRF(String html){
 		//CSRF Exp: <input type='hidden' name='csrfmiddlewaretoken' value='66ad078b7d56df869c9c079e776b3c01' />
 		Pattern pattern = Pattern.compile("name=[\']csrfmiddlewaretoken[\'] value=[\']\\w+[\']");
 		Matcher m = pattern.matcher(html);
-		//Ö»ĞèÈ¡Ò»´Î
+		//åªéœ€å–ä¸€æ¬¡
 		if(m.find()){
 			String csrfHtml = m.group();
 			System.out.println("CSRF with Html: "+csrfHtml);
 			int start = csrfHtml.indexOf("value");
 			int end = csrfHtml.lastIndexOf("\'");
-			//½ØÈ¡CSRFµÄÖµ
+			//æˆªå–CSRFçš„å€¼
 			String csrf = csrfHtml.substring(start+7,end);
 			System.out.println("CSRF Value is: "+csrf);
 			return csrf;
@@ -35,7 +38,7 @@ public class HtmlParser {
 		return null;
 	}
 	
-	public int parseMaxGPage(String html){
+	public int parseMaxPage(String html){
 		//G PageNumber: <a href="?page=37" class="page">37</a>
 		Pattern pattern = Pattern.compile("<a href=[\"][\\?]page=\\d+[\"] class=\"page\">\\d+</a>");
 		Matcher m = pattern.matcher(html);
@@ -47,42 +50,106 @@ public class HtmlParser {
 			String page = pageHtml.substring(pageStart,pageEnd);
 			pages.add(Integer.parseInt(page));
 		}
-		System.out.println("¹Å¼®×î´óÒ³Êı: "+pages.last());
+		System.out.println("å¤ç±æœ€å¤§é¡µæ•°: "+pages.last());
 		return pages.last();
 	}
 	
-	public void parseBook(String html){
+	public void parseOldBooks(String html){
 		//G Book: <a href="/g/detail/11896372/">******
 		Pattern pattern = Pattern.compile("<a href=[\"]/g/detail/\\d+/[\"]>[\\S&&[^<]]{1,}");
 		Matcher m = pattern.matcher(html);
 		while(m.find()){
-			//»ñÈ¡ÊéµÄId
+			//è·å–ä¹¦çš„Id
 			String tmp = m.group();
-//			System.out.println(tmp);
 			int idStart = tmp.indexOf("l")+2;
 			int idEnd = tmp.lastIndexOf(">")-2;
 			String id = tmp.substring(idStart,idEnd);
-			//»ñÈ¡ÊéÃû
+			//è·å–ä¹¦å
 			int nameStart = tmp.indexOf(">")+1;
 			String name = tmp.substring(nameStart);
-			books.put(id, name);
+			oldbooks.put(id, name);
 		}
 	}
 	
-	public void getAllPopularBooks(){
-		//µÚ¶şÒ³²ÅÓĞÏÔÊ¾×î´óÒ³Êı
-		int maxPage = parseMaxGPage(HtmlCatcher.catchHtmlFirstGET("http://www.ikandou.com/g/popular/?page=2"));
+	public void parsePopularBooks(String html){
+		//è›‹ç–¼çš„Regx = =!
+//		Pattern pattern = Pattern.compile("<a href=[\"]/oldbook/\\d+\\?sortby=popular[\"]>\\s+<img src=[\"]http://img3\\.douban\\.com/mpic/\\w+\\.jpg[\"] />"+
+//										"\\s+<div class=[\"]\\w*[\"]>\\s+<span class=[\"]title[\"]>[^<]{1,}");
+		Pattern pattern = Pattern.compile("<a href=[\"]/oldbook/\\d+\\?\\w+=\\w+[\"]>\\s+<img src=[\"]http://img\\d+\\.\\w+\\.com/"+
+										"((pics)||(mpic))/((\\w+)||(\\w+\\-\\w+\\-\\w+))\\.((gif)||(jpg))[\"] />"+
+										"\\s+<div \\w+=[\"]\\w*[\"]>\\s+<span \\w+=[\"]\\w+[\"]>[^<]{1,}");
+		Matcher m = pattern.matcher(html);
+		while(m.find()){
+			String tmp = m.group();
+			//æ•´ç†æ ¼å¼å–å‡ºå¤šä½™ç©ºæ ¼,æ˜¾ç¤º'å·
+			String tmp2 = tmp.replaceAll(">\\s+", ">");
+			String tmp3 = tmp2.replaceAll("&#39;", "'");
+			System.out.println(tmp3);
+			//è·å–id
+			int idStart = tmp3.indexOf("oldbook")+2;
+			int idEnd = tmp3.indexOf("?");
+			String id = tmp3.substring(idStart,idEnd);
+			//è·å–name
+			int nameStart = tmp3.lastIndexOf(">");
+			String name = tmp3.substring(nameStart);
+			//è·å–BookDetailURL
+			int detailURLStart = tmp3.indexOf("/");
+			int detailURLEnd = tmp3.indexOf(">")-1;
+			String detailURL = DOMAIN+tmp3.substring(detailURLStart,detailURLEnd);
+			System.out.println("detailURL: "+detailURL);
+			String downloadPage = HtmlCatcher.catchHtmlGET(detailURL);
+			System.out.println(downloadPage);
+			
+			popularbooks.put(id, name);
+		}
+	}
+	
+	public void getAllGBooks(){
+		HtmlCatcher.loginOn();
+		//ç¬¬äºŒé¡µæ‰æœ‰æ˜¾ç¤ºæœ€å¤§é¡µæ•°
+		int maxPage = parseMaxPage(HtmlCatcher.catchHtmlGET("http://www.ikandou.com/g/popular/?page=2"));
 		for(int i=1;i<=maxPage;i++){
 			String url = "http://www.ikandou.com/g/popular/?page="+i;
 			String html = HtmlCatcher.catchHtmlGET(url);
-			parseBook(html);
+			parseOldBooks(html);
 		}
-		System.out.println("ÊéµÄ×ÜÊı: "+books.size());
-		System.out.println("ÊéµÄ×ÜÄ¿Â¼: "+books);
+		System.out.println("ä¹¦çš„æ€»æ•°: "+oldbooks.size());
+		System.out.println("ä¹¦çš„æ€»ç›®å½•: "+oldbooks);
 	}
 	
+	public void getAllPoplularBooks(){
+		HtmlCatcher.loginOn();
+		int maxPage = parseMaxPage(HtmlCatcher.catchHtmlGET("http://ikandou.com/oldpopular/"));
+//		for(int i=0;i<=maxPage;i++){
+//			String url = "http://ikandou.com/oldpopular/?page="+i;
+//			String html = HtmlCatcher.catchHtmlGET(url);
+//			parsePopularBooks(html);
+//			System.out.println("ä¹¦çš„æ€»æ•°: "+popularbooks.size());
+//		}
+//		System.out.println("ä¹¦çš„æ€»æ•°: "+popularbooks.size());
+//		System.out.println("ä¹¦çš„æ€»ç›®å½•: "+popularbooks);
+		String url = "http://ikandou.com/oldpopular/?page=1";
+		String html = HtmlCatcher.catchHtmlGET(url);
+		parsePopularBooks(html);
+		System.out.println("ä¹¦çš„æ€»æ•°: "+popularbooks.size());
+	}
+	
+	public HashMap<String, String> getDiffBooks(){
+		for(String key: popularbooks.keySet()){
+			if(oldbooks.containsKey(key)){
+				popularbooks.remove(key);
+			}
+		}
+		return popularbooks;
+	}
+
+	
 	public static void main(String[] args) {
-		HtmlCatcher.setUseProxy(false);
-		new HtmlParser().getAllPopularBooks();
+		HtmlCatcher.setUseProxy(true);
+		HtmlParser parser = new HtmlParser();
+		HtmlCatcher.loginOn();
+//		new HtmlParser().getAllGBooks();
+		parser.getAllPoplularBooks();
+		System.out.println(popularbooks.size());
 	}
 }
