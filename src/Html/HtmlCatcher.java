@@ -43,7 +43,7 @@ public class HtmlCatcher {
 			HttpResponse response = httpClient.execute(httpGet);
 			//»ñÈ¡×´Ì¬Âë
 			int resStatus = response.getStatusLine().getStatusCode();
-			System.out.println("FirstGet·µ»Ø×´Ì¬Âë: "+resStatus);
+//			System.out.println("Get·µ»Ø×´Ì¬Âë: "+resStatus);
 			//200 ok
 			if(resStatus==HttpStatus.SC_OK){
 				HttpEntity entity = response.getEntity();
