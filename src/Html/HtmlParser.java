@@ -85,6 +85,7 @@ public class HtmlParser {
 		Pattern pattern = Pattern.compile("<a href=[\"]/oldbook/\\d+\\?\\w+=\\w+[\"]>\\s+<img src=[\"]http://img\\d+\\.\\w+\\.com/"+
 										"((pics)||(mpic))/((\\w+)||(\\w+\\-\\w+\\-\\w+))\\.((gif)||(jpg))[\"] />"+
 										"\\s+<div \\w+=[\"]\\w*[\"]>\\s+<span \\w+=[\"]\\w+[\"]>[^<]{1,}");
+//		Pattern pattern2 = Pattern.compile("")
 		Matcher m = pattern.matcher(html);
 		while(m.find()){
 			String tmp = m.group();
@@ -109,13 +110,17 @@ public class HtmlParser {
 			
 			String detailPage = HtmlCatcher.catchHtmlGET(detailURL);
 			//取得下载码
-			String downloadCode = parsePopularDownloadCode(detailPage);
+			String downloadCodeAndFormat = parsePopularDownloadCode(detailPage);
+			int star = downloadCodeAndFormat.lastIndexOf("*");
+			String downloadCode = downloadCodeAndFormat.substring(0,star);
+			String format = downloadCodeAndFormat.substring(star+1);
 //			System.out.println("DownloadCode: "+downloadCode);
 			//获取下载URL
 			String downloadURL = DOWNLOADPRE+downloadCode;
-			System.out.println("书名: "+name+", DOWNLOAD: "+downloadURL);
+			System.out.println("书名: "+name+"."+format+", DOWNLOAD: "+downloadURL);
 			props.put(downloadURL, name);
 		}
+//		System.out.println(props.toString());
 	}
 	
 	public String parsePopularDownloadCode(String detailPage){
@@ -123,6 +128,7 @@ public class HtmlParser {
 		Pattern pattern = Pattern.compile("<a class=[\"]((minibutton )||(minibutton inactive))[\"][^<]{1,}</a><[^<]{1,}");
 		Matcher m = pattern.matcher(detailPage);
 		String popularDownloadCode = null;
+		String popularFormat = null;
 		int maxCounter = 0;
 		while(m.find()){
 			String tmp = m.group();
@@ -131,15 +137,20 @@ public class HtmlParser {
 			String tmp2 = tmp.substring(downloadCodeStart);
 			int downloadCodeEnd = tmp2.indexOf("\"");
 			String downloadCode = tmp2.substring(0, downloadCodeEnd);
-			//获取下载数
+			//获取格式
+			int formatBegin = tmp.indexOf("载")+2;
+			int formatEnd = tmp.indexOf("</a>");
+			String format = tmp.substring(formatBegin,formatEnd);
+			//获取最大下载数
 			int counterStart = tmp.lastIndexOf(">")+1;
 			int counter = Integer.parseInt(tmp.substring(counterStart));
 			if(counter>maxCounter){
 				maxCounter = counter;
 				popularDownloadCode = downloadCode;
+				popularFormat = format;
 			}
 		}
-		return popularDownloadCode;
+		return popularDownloadCode+"*"+popularFormat;
 	}
 	
 	public void getAllGBooks(){
@@ -157,7 +168,7 @@ public class HtmlParser {
 	public void getAllPoplularBooks(){
 		HtmlCatcher.loginOn();
 		int maxPage = parseMaxPage(HtmlCatcher.catchHtmlGET("http://ikandou.com/oldpopular/"));
-		for(int i=1;i<=maxPage;i++){
+		for(int i=1;i<=2;i++){
 			System.out.println("当前页: "+i);
 			String url = "http://ikandou.com/oldpopular/?page="+i;
 			String html = HtmlCatcher.catchHtmlGET(url);
@@ -167,7 +178,7 @@ public class HtmlParser {
 //		String url = "http://ikandou.com/oldpopular/?page=2";
 //		String html = HtmlCatcher.catchHtmlGET(url);
 //		parsePopularBooks(html);
-		System.out.println("书的总数: "+props.size());
+//		System.out.println("书的总数: "+props.size());
 	}
 	
 	public Properties getProps() {
