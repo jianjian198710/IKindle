@@ -4,8 +4,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStreamWriter;
-import java.io.RandomAccessFile;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -16,36 +14,33 @@ import org.apache.http.client.methods.HttpGet;
 import Html.HtmlCatcher;
 
 public class HttpDownLoader {
-	int i = 2;
-	public void downLoad(String Url,String targetFile){
+	public void downLoad(String Url,String targetFile) throws IOException{
 		HttpClient httpclient = HtmlCatcher.getHttpClientInstance();
 		HttpGet httpGet = new HttpGet(Url);
-		long length = 0;
-		try{
-			HttpResponse response = httpclient.execute(httpGet);
-			int resStatus = response.getStatusLine().getStatusCode();
-			if(resStatus==HttpStatus.SC_OK){
-				HttpEntity entity = response.getEntity();
-				System.out.println("ContentType: "+entity.getContentType());
-				if(entity!=null&&entity.isStreaming()){
-					File file = new File(targetFile);
-					try(FileOutputStream fos = new FileOutputStream(file);
-					    InputStream is = entity.getContent()){
-						System.out.println(targetFile+" ContentLength: "+entity.getContentLength());
-						byte[] b = new byte[2048];
-						int hasRead = 0;
-						while((hasRead=is.read(b))!=-1){
-							fos.write(b, 0, hasRead);
-						}
-						fos.flush();
-						System.out.println(targetFile+"下载完成!!!");
-					}catch(IOException e){
-						System.out.println(targetFile+"下载出错!!!");
+		HttpResponse response = httpclient.execute(httpGet);
+		int resStatus = response.getStatusLine().getStatusCode();
+		if(resStatus==HttpStatus.SC_OK){
+			HttpEntity entity = response.getEntity();
+			if(entity!=null&&entity.isStreaming()){
+			/* 虽然这个方法吊,但是好不容易想出个递归还是用那个吧	
+			 * File file = new File(targetFile);
+				while(file.exists()){
+					file = new File("I"+targetFile);
+				}*/
+				File file = createFile(targetFile);
+				try(FileOutputStream fos = new FileOutputStream(file);
+				    InputStream is = entity.getContent()){
+					System.out.println(targetFile+" ContentLength: "+entity.getContentLength());
+					byte[] b = new byte[2048];
+					int hasRead = 0;
+					while((hasRead=is.read(b))!=-1){
+						fos.write(b, 0, hasRead);
 					}
+					System.out.println(targetFile+"下载完成!!!");
+				}catch(IOException e){
+					System.out.println(targetFile+"下载出错!!!");
 				}
 			}
-		}catch (IOException e){
-			e.printStackTrace();
 		}
 	}
 	
@@ -69,13 +64,6 @@ public class HttpDownLoader {
 //		String s = "http://ikandou.com/oldbook/download/inner/71383848893";
 //		String filename ="a.zip";
 //		new HttpDownLoader().downLoad(s, filename);
-		HttpDownLoader h = new HttpDownLoader();
-		for(int i=0;i<3;i++){
-			OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream(h.createFile("尼玛.txt")));
-			osw.write("aaa");
-			osw.flush();
-			osw.close();
-		}
 	}
 }
 

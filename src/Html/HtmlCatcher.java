@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.http.Consts;
-import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
@@ -31,7 +30,7 @@ public class HtmlCatcher {
 		return httpClient;
 	}
 	
-	public static String catchHtmlGET(String url){
+	public static String catchHtmlGET(String url) throws IOException{
 		StringBuffer html = new StringBuffer();
 		//创建HttpClient对象
 		httpClient = getHttpClientInstance();
@@ -66,8 +65,7 @@ public class HtmlCatcher {
 		return html.toString();
 	}
 	
-	public static void loginOn(){
-		StringBuffer html = new StringBuffer();
+	public static void loginOn() throws IOException{
 		//创建HttpClient对象
 		httpClient = getHttpClientInstance();
 		//只针对IKanDou
@@ -85,24 +83,14 @@ public class HtmlCatcher {
         formparams.add(new BasicNameValuePair("password", "198710"));
         formparams.add(new BasicNameValuePair("remember_me","on"));
         httpPost.setEntity(new UrlEncodedFormEntity(formparams, Consts.UTF_8));  
-		try{
-			HttpResponse response = httpClient.execute(httpPost);
-			int resStatus = response.getStatusLine().getStatusCode();
-			System.out.println("Login On返回状态码: "+resStatus);
-			//Redirect 去首页
-			if(resStatus==302){
-				System.out.println("Login On Successfully!");
-//				Header header = response.getFirstHeader("Location");
-//				String location = header.getValue();
-//				httpPost.releaseConnection();
-//				System.out.println("Send a Get request again! To:"+location);
-//				html.append(catchHtmlGET(location));
-			}
-		} catch (IOException e) {
-			System.out.println("登录出错");
-		} finally{
-			httpPost.releaseConnection();
+		HttpResponse response = httpClient.execute(httpPost);
+		int resStatus = response.getStatusLine().getStatusCode();
+		System.out.println("Login On返回状态码: "+resStatus);
+		
+		if(resStatus==302){
+			System.out.println("Login On Successfully!");
 		}
+		httpPost.releaseConnection();
 	}
 	
 	
@@ -114,7 +102,7 @@ public class HtmlCatcher {
 		HtmlCatcher.useProxy = useProxy;
 	}
 
-	public static void main(String[] args){
+	public static void main(String[] args) throws IOException{
 		setUseProxy(true);
 //		String s = catchHtmlGET2("http://www.ikandou.com/g/download/ebook/inner/15162710/epub/");
 //		HtmlCatcher.loginOn("http://www.ikandou.com/accounts/login/?next=/g/popular/");

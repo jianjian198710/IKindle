@@ -1,13 +1,9 @@
 package Html;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.nio.charset.Charset;
-import java.util.HashMap;
-import java.util.Properties;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -24,12 +20,19 @@ public class HtmlParser {
 	int pageCounter;
 	public static final String DOMAIN ="http://ikandou.com"; 
 	public static final String DOWNLOADPRE = "http://ikandou.com/oldbook/download/inner/";
-	private Properties props;
+	
+	private static final String CSRF = "name=[\']csrfmiddlewaretoken[\'] value=[\']\\w+[\']"; 
+	private static final String PAGENUMBER = "<a href=[\"][\\?]page=\\d+[\"] class=\"page\">\\d+</a>"; 
+	private static final String OLDBOOK = "<a href=[\"]/g/detail/\\d+/[\"]>[\\S&&[^<]]{1,}"; 
+	private static final String POPBOOK = "<a href=[\"]/oldbook/\\d+\\?\\w+=\\w+[\"]>\\s+<img src=[\"]http://img\\d+\\.\\w+\\.com/"+
+			"((pics)||(mpic))/((\\w+)||(\\w+\\-\\w+\\-\\w+))\\.((gif)||(jpg))[\"] />"+
+			"\\s+<div \\w+=[\"]\\w*[\"]>\\s+<span \\w+=[\"]\\w+[\"]>[^<]{1,}"; 
+	private static final String POPBOOKCODE = "<a class=[\"]((minibutton )||(minibutton inactive))[\"][^<]{1,}</a><[^<]{1,}"; 
 	
 	//解析页面的CSRF
 	public static String parseCSRF(String html){
 		//CSRF Exp: <input type='hidden' name='csrfmiddlewaretoken' value='66ad078b7d56df869c9c079e776b3c01' />
-		Pattern pattern = Pattern.compile("name=[\']csrfmiddlewaretoken[\'] value=[\']\\w+[\']");
+		Pattern pattern = Pattern.compile(CSRF);
 		Matcher m = pattern.matcher(html);
 		//只需取一次
 		if(m.find()){
@@ -47,7 +50,7 @@ public class HtmlParser {
 	
 	public int parseMaxPage(String html){
 		//G PageNumber: <a href="?page=37" class="page">37</a>
-		Pattern pattern = Pattern.compile("<a href=[\"][\\?]page=\\d+[\"] class=\"page\">\\d+</a>");
+		Pattern pattern = Pattern.compile(PAGENUMBER);
 		Matcher m = pattern.matcher(html);
 		TreeSet<Integer> pages = new TreeSet<Integer>();
 		while(m.find()){
@@ -63,7 +66,7 @@ public class HtmlParser {
 	
 	public void parseOldBooks(String html){
 		//G Book: <a href="/g/detail/11896372/">******
-		Pattern pattern = Pattern.compile("<a href=[\"]/g/detail/\\d+/[\"]>[\\S&&[^<]]{1,}");
+		Pattern pattern = Pattern.compile(OLDBOOK);
 		Matcher m = pattern.matcher(html);
 		while(m.find()){
 			//获取书的Id
@@ -78,14 +81,8 @@ public class HtmlParser {
 		}
 	}
 	
-	public void parsePopularBooks(String html){
-		//蛋疼的Regx = =!
-//		Pattern pattern = Pattern.compile("<a href=[\"]/oldbook/\\d+\\?sortby=popular[\"]>\\s+<img src=[\"]http://img3\\.douban\\.com/mpic/\\w+\\.jpg[\"] />"+
-//										"\\s+<div class=[\"]\\w*[\"]>\\s+<span class=[\"]title[\"]>[^<]{1,}");
-		Pattern pattern = Pattern.compile("<a href=[\"]/oldbook/\\d+\\?\\w+=\\w+[\"]>\\s+<img src=[\"]http://img\\d+\\.\\w+\\.com/"+
-										"((pics)||(mpic))/((\\w+)||(\\w+\\-\\w+\\-\\w+))\\.((gif)||(jpg))[\"] />"+
-										"\\s+<div \\w+=[\"]\\w*[\"]>\\s+<span \\w+=[\"]\\w+[\"]>[^<]{1,}");
-//		Pattern pattern2 = Pattern.compile("")
+	public void parsePopularBooks(String html)throws IOException{
+		Pattern pattern = Pattern.compile(POPBOOK);
 		Matcher m = pattern.matcher(html);
 		while(m.find()){
 			String tmp = m.group();
@@ -119,14 +116,16 @@ public class HtmlParser {
 			String downloadURL = DOWNLOADPRE+downloadCode;
 			String value = name+"."+format;
 			System.out.println("书名: "+name+"."+format+", DOWNLOAD: "+downloadURL);
-			props.put(downloadURL,value );
+			try(OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream("IKanDou.txt",true))){
+				osw.write(downloadURL+"="+value+"\n");
+			}
 		}
 //		System.out.println(props.toString());
 	}
 	
 	public String parsePopularDownloadCode(String detailPage){
 //<li class=\"download\"><a class=\"minibutton \" href=\"/oldbook/download/1277631488\" target=\"_blank\">下载 pdf</a><span class=\"count\">22</span></li>
-		Pattern pattern = Pattern.compile("<a class=[\"]((minibutton )||(minibutton inactive))[\"][^<]{1,}</a><[^<]{1,}");
+		Pattern pattern = Pattern.compile(POPBOOKCODE);
 		Matcher m = pattern.matcher(detailPage);
 		String popularDownloadCode = null;
 		String popularFormat = null;
@@ -155,7 +154,7 @@ public class HtmlParser {
 		return popularDownloadCode+"*"+popularFormat;
 	}
 	
-	public void getAllGBooks(){
+	public void getAllGBooks() throws IOException{
 		HtmlCatcher.loginOn();
 		//第二页才有显示最大页数
 		int maxPage = parseMaxPage(HtmlCatcher.catchHtmlGET("http://www.ikandou.com/g/popular/?page=2"));
@@ -164,10 +163,9 @@ public class HtmlParser {
 			String html = HtmlCatcher.catchHtmlGET(url);
 			parseOldBooks(html);
 		}
-		System.out.println("书的总数: "+props.size());
 	}
 	
-	public void getAllPoplularBooks(){
+	public void getAllPoplularBooks() throws IOException{
 		HtmlCatcher.loginOn();
 		int maxPage = parseMaxPage(HtmlCatcher.catchHtmlGET("http://ikandou.com/oldpopular/"));
 		for(int i=1;i<=maxPage;i++){
@@ -175,7 +173,6 @@ public class HtmlParser {
 			String url = "http://ikandou.com/oldpopular/?page="+i;
 			String html = HtmlCatcher.catchHtmlGET(url);
 			parsePopularBooks(html);
-			System.out.println("书的总数: "+props.size());
 		}
 //		String url = "http://ikandou.com/oldpopular/?page=2";
 //		String html = HtmlCatcher.catchHtmlGET(url);
@@ -183,19 +180,9 @@ public class HtmlParser {
 //		System.out.println("书的总数: "+props.size());
 	}
 	
-	public Properties getProps() {
-		return props;
-	}
-
-	public void setProps(Properties props) {
-		this.props = props;
-	}
-
 	public static void main(String[] args) throws FileNotFoundException, IOException {
-		HtmlCatcher.setUseProxy(true);
+		HtmlCatcher.setUseProxy(false);
 		HtmlParser parser = new HtmlParser();
-		Properties props = new Properties();
-		parser.setProps(props);
 		parser.getAllPoplularBooks();
 //		new HtmlParser().getAllGBooks();
 //		parser.getAllPoplularBooks();
@@ -203,7 +190,6 @@ public class HtmlParser {
 		
 //		String s = HtmlCatcher.catchHtmlGET("http://ikandou.com/oldbook/10953?sortby=popular");
 //		System.out.println(parser.parsePopularDownloadCode(s));
-		parser.getProps().store(new OutputStreamWriter(new FileOutputStream(new File("IKanDou2.properties")),Charset.forName("UTF-8")), "IKanDou Download List");
 
 	}
 }
