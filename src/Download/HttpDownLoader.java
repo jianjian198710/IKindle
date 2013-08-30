@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
 import java.io.RandomAccessFile;
 
 import org.apache.http.HttpEntity;
@@ -15,7 +16,7 @@ import org.apache.http.client.methods.HttpGet;
 import Html.HtmlCatcher;
 
 public class HttpDownLoader {
-	
+	int i = 2;
 	public void downLoad(String Url,String targetFile){
 		HttpClient httpclient = HtmlCatcher.getHttpClientInstance();
 		HttpGet httpGet = new HttpGet(Url);
@@ -48,12 +49,33 @@ public class HttpDownLoader {
 		}
 	}
 	
-	public static void main(String[] args) throws InterruptedException{
-		HtmlCatcher.setUseProxy(true);
-		HtmlCatcher.loginOn();
-		String s = "http://ikandou.com/oldbook/download/inner/71383848893";
-		String filename ="a.zip";
-		new HttpDownLoader().downLoad(s, filename);
+	public File createFile(String filename) throws IOException{
+		File file = new File(filename);
+		if(file.exists()){
+			int dot = filename.lastIndexOf(".");
+			String format = filename.substring(dot);
+			String name = filename.substring(0,dot)+"I";
+			return createFile(name+format);
+		}else{
+			file.createNewFile();
+			System.out.println(file.getName());
+			return file;
+		}
+	}
+	
+	public static void main(String[] args) throws InterruptedException, IOException{
+//		HtmlCatcher.setUseProxy(true);
+//		HtmlCatcher.loginOn();
+//		String s = "http://ikandou.com/oldbook/download/inner/71383848893";
+//		String filename ="a.zip";
+//		new HttpDownLoader().downLoad(s, filename);
+		HttpDownLoader h = new HttpDownLoader();
+		for(int i=0;i<3;i++){
+			OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream(h.createFile("ÄáÂê.txt")));
+			osw.write("aaa");
+			osw.flush();
+			osw.close();
+		}
 	}
 }
 

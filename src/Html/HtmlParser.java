@@ -100,7 +100,7 @@ public class HtmlParser {
 //			System.out.println("id: "+id);
 			//获取name
 			int nameStart = tmp3.lastIndexOf(">")+1;
-			String name = tmp3.substring(nameStart);
+			String name = tmp3.substring(nameStart).trim();
 			//获取BookDetailURL
 			int detailURLStart = tmp3.indexOf("/");
 			int detailURLEnd = tmp3.indexOf(">")-1;
@@ -117,8 +117,9 @@ public class HtmlParser {
 //			System.out.println("DownloadCode: "+downloadCode);
 			//获取下载URL
 			String downloadURL = DOWNLOADPRE+downloadCode;
+			String value = name+"."+format;
 			System.out.println("书名: "+name+"."+format+", DOWNLOAD: "+downloadURL);
-			props.put(downloadURL, name);
+			props.put(downloadURL,value );
 		}
 //		System.out.println(props.toString());
 	}
@@ -140,7 +141,8 @@ public class HtmlParser {
 			//获取格式
 			int formatBegin = tmp.indexOf("载")+2;
 			int formatEnd = tmp.indexOf("</a>");
-			String format = tmp.substring(formatBegin,formatEnd);
+			String format = tmp.substring(formatBegin,formatEnd).trim().toLowerCase();
+			
 			//获取最大下载数
 			int counterStart = tmp.lastIndexOf(">")+1;
 			int counter = Integer.parseInt(tmp.substring(counterStart));
@@ -168,7 +170,7 @@ public class HtmlParser {
 	public void getAllPoplularBooks(){
 		HtmlCatcher.loginOn();
 		int maxPage = parseMaxPage(HtmlCatcher.catchHtmlGET("http://ikandou.com/oldpopular/"));
-		for(int i=1;i<=2;i++){
+		for(int i=1;i<=maxPage;i++){
 			System.out.println("当前页: "+i);
 			String url = "http://ikandou.com/oldpopular/?page="+i;
 			String html = HtmlCatcher.catchHtmlGET(url);
