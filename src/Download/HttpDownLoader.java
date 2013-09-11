@@ -21,7 +21,8 @@ public class HttpDownLoader {
 		int resStatus = response.getStatusLine().getStatusCode();
 		if(resStatus==HttpStatus.SC_OK){
 			HttpEntity entity = response.getEntity();
-			if(entity!=null&&entity.isStreaming()){
+			//只下载小于10M的书,避免PDF
+			if(entity!=null&&entity.isStreaming()&&entity.getContentLength()<10000000){
 			/* 虽然这个方法吊,但是好不容易想出个递归还是用那个吧	
 			 * File file = new File(targetFile);
 				while(file.exists()){
@@ -37,9 +38,12 @@ public class HttpDownLoader {
 						fos.write(b, 0, hasRead);
 					}
 					System.out.println(targetFile+"下载完成!!!");
+					httpGet.releaseConnection();
 				}catch(IOException e){
 					System.out.println(targetFile+"下载出错!!!");
 				}
+			}else{
+				httpGet.releaseConnection();
 			}
 		}
 	}

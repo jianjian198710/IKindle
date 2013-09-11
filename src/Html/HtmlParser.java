@@ -117,14 +117,17 @@ public class HtmlParser {
 			try(BufferedReader br =new BufferedReader(new InputStreamReader(new FileInputStream("BooksInfo.txt")));
 				OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream("IKanDou.txt",true))){
 				for(String downloadCodeAndFormat=br.readLine();downloadCodeAndFormat!=null;downloadCodeAndFormat = br.readLine()){
+					//8888#888*mobi
 					int star = downloadCodeAndFormat.lastIndexOf("*");
-					String downloadCode = downloadCodeAndFormat.substring(0,star);
+					int sym = downloadCodeAndFormat.lastIndexOf("#");
+					String downloadCode = downloadCodeAndFormat.substring(0,sym);
 					String format = downloadCodeAndFormat.substring(star+1);
+					String count = downloadCodeAndFormat.substring(sym+1,star);
 //					System.out.println("DownloadCode: "+downloadCode);
 					//获取下载URL
 					String downloadURL = DOWNLOADPRE+downloadCode;
-					String value = name+"."+format;
-					System.out.println("书名: "+name+"."+format+", DOWNLOAD: "+downloadURL);
+					String value = name+"#"+count+"."+format;
+					System.out.println("书名: "+value+", DOWNLOAD: "+downloadURL);
 					osw.write(downloadURL+"="+value+"\n");
 				}
 			}
@@ -136,10 +139,14 @@ public class HtmlParser {
 //<li class=\"download\"><a class=\"minibutton \" href=\"/oldbook/download/1277631488\" target=\"_blank\">下载 pdf</a><span class=\"count\">22</span></li>
 		Pattern pattern = Pattern.compile(POPBOOKCODE);
 		Matcher m = pattern.matcher(detailPage);
+		File file = new File("BooksInfo.txt");
+		if(file.exists()){
+			file.delete();
+		}else{
+			file.createNewFile();
+		}
 		while(m.find()){
-			File file = new File("BooksInfo.txt");
 			String tmp = m.group();
-			System.out.println(tmp);
 			//获取downloadCode
 			int downloadCodeStart = tmp.indexOf("download")+9;
 			String tmp2 = tmp.substring(downloadCodeStart);
@@ -154,7 +161,7 @@ public class HtmlParser {
 			int counterStart = tmp.lastIndexOf(">")+1;
 			int counter = Integer.parseInt(tmp.substring(counterStart));
 			try(OutputStreamWriter oow = new OutputStreamWriter(new FileOutputStream(file,true),Charset.forName("UTF-8"))){
-				oow.write(downloadCode+"*"+format+"#"+counter+"\n");
+				oow.write(downloadCode+"#"+counter+"*"+format+"\n");
 			}
 		}
 	}
@@ -186,7 +193,7 @@ public class HtmlParser {
 	}
 	
 	public static void main(String[] args) throws FileNotFoundException, IOException {
-		HtmlCatcher.setUseProxy(true);
+		HtmlCatcher.setUseProxy(false);
 		HtmlParser parser = new HtmlParser();
 		parser.getAllPoplularBooks();
 //		new HtmlParser().getAllGBooks();
