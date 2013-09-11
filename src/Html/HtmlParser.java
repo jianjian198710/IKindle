@@ -1,9 +1,14 @@
 package Html;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.nio.charset.Charset;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,7 +32,7 @@ public class HtmlParser {
 	private static final String POPBOOK = "<a href=[\"]/oldbook/\\d+\\?\\w+=\\w+[\"]>\\s+<img src=[\"]http://img\\d+\\.\\w+\\.com/"+
 			"((pics)||(mpic))/((\\w+)||(\\w+\\-\\w+\\-\\w+))\\.((gif)||(jpg))[\"] />"+
 			"\\s+<div \\w+=[\"]\\w*[\"]>\\s+<span \\w+=[\"]\\w+[\"]>[^<]{1,}"; 
-	private static final String POPBOOKCODE = "<a class=[\"]((minibutton )||(minibutton inactive))[\"][^<]{1,}</a><[^<]{1,}"; 
+	private static final String POPBOOKCODE = "<a class=[\"]((minibutton )||(minibutton inactive))[\"] href[^<]{1,}</a><[^<]{1,}"; 
 	
 	//解析页面的CSRF
 	public static String parseCSRF(String html){
@@ -107,31 +112,34 @@ public class HtmlParser {
 			
 			String detailPage = HtmlCatcher.catchHtmlGET(detailURL);
 			//取得下载码
-			String downloadCodeAndFormat = parsePopularDownloadCode(detailPage);
-			int star = downloadCodeAndFormat.lastIndexOf("*");
-			String downloadCode = downloadCodeAndFormat.substring(0,star);
-			String format = downloadCodeAndFormat.substring(star+1);
-//			System.out.println("DownloadCode: "+downloadCode);
-			//获取下载URL
-			String downloadURL = DOWNLOADPRE+downloadCode;
-			String value = name+"."+format;
-			System.out.println("书名: "+name+"."+format+", DOWNLOAD: "+downloadURL);
-			try(OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream("IKanDou.txt",true))){
-				osw.write(downloadURL+"="+value+"\n");
+//			String downloadCodeAndFormat = parsePopularDownloadCode(detailPage);
+			parsePopularDownloadCode(detailPage);
+			try(BufferedReader br =new BufferedReader(new InputStreamReader(new FileInputStream("BooksInfo.txt")));
+				OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream("IKanDou.txt",true))){
+				for(String downloadCodeAndFormat=br.readLine();downloadCodeAndFormat!=null;downloadCodeAndFormat = br.readLine()){
+					int star = downloadCodeAndFormat.lastIndexOf("*");
+					String downloadCode = downloadCodeAndFormat.substring(0,star);
+					String format = downloadCodeAndFormat.substring(star+1);
+//					System.out.println("DownloadCode: "+downloadCode);
+					//获取下载URL
+					String downloadURL = DOWNLOADPRE+downloadCode;
+					String value = name+"."+format;
+					System.out.println("书名: "+name+"."+format+", DOWNLOAD: "+downloadURL);
+					osw.write(downloadURL+"="+value+"\n");
+				}
 			}
 		}
 //		System.out.println(props.toString());
 	}
 	
-	public String parsePopularDownloadCode(String detailPage){
+	public void parsePopularDownloadCode(String detailPage) throws IOException{
 //<li class=\"download\"><a class=\"minibutton \" href=\"/oldbook/download/1277631488\" target=\"_blank\">下载 pdf</a><span class=\"count\">22</span></li>
 		Pattern pattern = Pattern.compile(POPBOOKCODE);
 		Matcher m = pattern.matcher(detailPage);
-		String popularDownloadCode = null;
-		String popularFormat = null;
-		int maxCounter = 0;
 		while(m.find()){
+			File file = new File("BooksInfo.txt");
 			String tmp = m.group();
+			System.out.println(tmp);
 			//获取downloadCode
 			int downloadCodeStart = tmp.indexOf("download")+9;
 			String tmp2 = tmp.substring(downloadCodeStart);
@@ -142,16 +150,13 @@ public class HtmlParser {
 			int formatEnd = tmp.indexOf("</a>");
 			String format = tmp.substring(formatBegin,formatEnd).trim().toLowerCase();
 			
-			//获取最大下载数
+			//获取下载数
 			int counterStart = tmp.lastIndexOf(">")+1;
 			int counter = Integer.parseInt(tmp.substring(counterStart));
-			if(counter>maxCounter){
-				maxCounter = counter;
-				popularDownloadCode = downloadCode;
-				popularFormat = format;
+			try(OutputStreamWriter oow = new OutputStreamWriter(new FileOutputStream(file,true),Charset.forName("UTF-8"))){
+				oow.write(downloadCode+"*"+format+"#"+counter+"\n");
 			}
 		}
-		return popularDownloadCode+"*"+popularFormat;
 	}
 	
 	public void getAllGBooks() throws IOException{
@@ -168,7 +173,7 @@ public class HtmlParser {
 	public void getAllPoplularBooks() throws IOException{
 		HtmlCatcher.loginOn();
 		int maxPage = parseMaxPage(HtmlCatcher.catchHtmlGET("http://ikandou.com/oldpopular/"));
-		for(int i=1;i<=maxPage;i++){
+		for(int i=1;i<=2;i++){
 			System.out.println("当前页: "+i);
 			String url = "http://ikandou.com/oldpopular/?page="+i;
 			String html = HtmlCatcher.catchHtmlGET(url);
@@ -181,7 +186,7 @@ public class HtmlParser {
 	}
 	
 	public static void main(String[] args) throws FileNotFoundException, IOException {
-		HtmlCatcher.setUseProxy(false);
+		HtmlCatcher.setUseProxy(true);
 		HtmlParser parser = new HtmlParser();
 		parser.getAllPoplularBooks();
 //		new HtmlParser().getAllGBooks();

@@ -50,7 +50,8 @@ public class DailyDownLoader {
 				while(m.find()){
 					String url = m.group(1);
 					String name = m.group(2);
-					String filename = "H:/Ebooks/"+name;
+					String formatName = name.replaceAll("[\\?]|[:]|[/]|[//*]", "#");
+					String filename = "C:/Ebooks/"+formatName;
 					getHttpDownloader().downLoad(url, filename);
 				}
 			}
@@ -75,7 +76,7 @@ public class DailyDownLoader {
 		HtmlCatcher.loginOn();
 		HttpDownLoader httpDownLoader = new HttpDownLoader();
 		DailyDownLoader dailyDownLoader = new DailyDownLoader(httpDownLoader);
-		dailyDownLoader.dailyDL(1);
+		dailyDownLoader.dailyDL(5540);
 	}
 
 }
